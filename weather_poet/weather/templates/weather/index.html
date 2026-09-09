@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weather Poet</title>
+    <style>
+      :root {
+        --bg1: #0f172a;
+        --bg2: #1d4ed8;
+        --card: rgba(15, 23, 42, 0.75);
+        --card-light: rgba(255, 255, 255, 0.08);
+        --text: #e2e8f0;
+        --muted: #cbd5e1;
+        --accent: #7dd3fc;
+        --accent-2: #c084fc;
+        --success: #86efac;
+        --danger: #fca5a5;
+        --shadow: rgba(15, 23, 42, 0.35);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Arial, sans-serif;
+        background: linear-gradient(135deg, var(--bg1), var(--bg2));
+        color: var(--text);
+        display: flex;
+        justify-content: center;
+        padding: 32px 18px;
+      }
+
+      .app {
+        width: min(920px, 100%);
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 28px;
+      }
+
+      .header h1 {
+        margin: 0;
+        font-size: clamp(2.2rem, 5vw, 4rem);
+        letter-spacing: 0.04em;
+      }
+
+      .header p {
+        margin-top: 12px;
+        font-size: 1.05rem;
+        color: var(--muted);
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 22px;
+        box-shadow: 0 18px 40px var(--shadow);
+        backdrop-filter: blur(8px);
+      }
+
+      .search-panel {
+        padding: 24px;
+      }
+
+      .search-form {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .search-input {
+        flex: 1;
+        max-width: 480px;
+        padding: 16px 18px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(15, 23, 42, 0.6);
+        color: var(--text);
+        font-size: 1rem;
+      }
+
+      .search-input::placeholder {
+        color: #94a3b8;
+      }
+
+      .search-button {
+        padding: 16px 24px;
+        border: none;
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #0f172a;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s ease, opacity 0.2s ease;
+      }
+
+      .search-button:hover:not(:disabled) {
+        transform: translateY(-1px);
+      }
+
+      .search-button:disabled {
+        opacity: 0.7;
+        cursor: wait;
+      }
+
+      .status {
+        min-height: 28px;
+        margin-top: 16px;
+        text-align: center;
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .status.error {
+        color: var(--danger);
+      }
+
+      .status.success {
+        color: var(--success);
+      }
+
+      .results {
+        margin-top: 28px;
+        display: grid;
+        gap: 20px;
+      }
+
+      .weather-card,
+      .poem-card {
+        padding: 22px;
+      }
+
+      .weather-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 16px;
+        margin-top: 14px;
+      }
+
+      .stat {
+        background: var(--card-light);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 16px;
+      }
+
+      .stat-label {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin-bottom: 8px;
+      }
+
+      .stat-value {
+        font-size: 1.35rem;
+        font-weight: bold;
+      }
+
+      .poem-card h3,
+      .weather-card h3 {
+        margin: 0;
+        font-size: 1.35rem;
+      }
+
+      .poem-box {
+        margin-top: 16px;
+        padding: 18px 20px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(125, 211, 252, 0.08), rgba(192, 132, 252, 0.08));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        line-height: 1.9;
+        font-size: 1.1rem;
+        white-space: pre-line;
+        color: #f8fafc;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      @media (max-width: 640px) {
+        .search-form {
+          flex-direction: column;
+        }
+
+        .search-input,
+        .search-button {
+          width: 100%;
+        }
+
+        .card {
+          border-radius: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <h1>Weather Poet</h1>
+        <p>Enter a city and let Gemini turn its weather into poetry.</p>
+      </header>
+
+      <main class="card search-panel">
+        <form id="weather-form" class="search-form" method="post">
+          {% csrf_token %}
+          <input
+            id="city-input"
+            class="search-input"
+            type="text"
+            name="city"
+            placeholder="Enter city name..."
+            aria-label="City name"
+          />
+          <button id="submit-button" class="search-button" type="submit">Get Weather</button>
+        </form>
+
+        <div id="status-message" class="status" aria-live="polite"></div>
+      </main>
+
+      <section id="results" class="results hidden" aria-live="polite">
+        <div id="weather-card" class="card weather-card">
+          <h3>Weather Details</h3>
+          <div class="weather-grid">
+            <div class="stat">
+              <div class="stat-label">City</div>
+              <div id="city-value" class="stat-value">-</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Temperature</div>
+              <div id="temp-value" class="stat-value">-</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Feels Like</div>
+              <div id="feels-value" class="stat-value">-</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Condition</div>
+              <div id="condition-value" class="stat-value">-</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Humidity</div>
+              <div id="humidity-value" class="stat-value">-</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Wind Speed</div>
+              <div id="wind-value" class="stat-value">-</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="poem-card" class="card poem-card">
+          <h3>Gemini's Poem</h3>
+          <div id="poem-text" class="poem-box">No poem yet.</div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const form = document.getElementById('weather-form');
+      const button = document.getElementById('submit-button');
+      const cityInput = document.getElementById('city-input');
+      const statusMessage = document.getElementById('status-message');
+      const resultsSection = document.getElementById('results');
+
+      const cityValue = document.getElementById('city-value');
+      const tempValue = document.getElementById('temp-value');
+      const feelsValue = document.getElementById('feels-value');
+      const conditionValue = document.getElementById('condition-value');
+      const humidityValue = document.getElementById('humidity-value');
+      const windValue = document.getElementById('wind-value');
+      const poemText = document.getElementById('poem-text');
+
+      function setStatus(message, type = '') {
+        statusMessage.textContent = message;
+        statusMessage.className = 'status';
+        if (type) {
+          statusMessage.classList.add(type);
+        }
+      }
+
+      function setLoading(isLoading) {
+        button.disabled = isLoading;
+        button.textContent = isLoading ? 'Getting weather and writing your poem...' : 'Get Weather';
+      }
+
+      function showWeather(data) {
+        const weather = data.weather;
+        cityValue.textContent = weather.city;
+        tempValue.textContent = `${weather.temperature}°C`;
+        feelsValue.textContent = `${weather.feels_like}°C`;
+        conditionValue.textContent = weather.condition;
+        humidityValue.textContent = `${weather.humidity}%`;
+        windValue.textContent = `${weather.wind_speed} km/h`;
+        resultsSection.classList.remove('hidden');
+      }
+
+      function showPoem(poem) {
+        poemText.textContent = poem;
+      }
+
+      form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+
+        const city = cityInput.value.trim();
+
+        if (!city) {
+          setStatus('Please enter a city.', 'error');
+          return;
+        }
+
+        setLoading(true);
+        setStatus('Getting weather and writing your poem...', 'success');
+
+        try {
+          const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+          const response = await fetch('/get-weather/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({ city: city }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok || !data.success) {
+            setStatus(data.error || 'Something went wrong. Please try again.', 'error');
+            resultsSection.classList.add('hidden');
+            return;
+          }
+
+          showWeather(data);
+          showPoem(data.poem);
+          setStatus('Weather found and poem ready!', 'success');
+        } catch (error) {
+          setStatus('Something went wrong. Please try again.', 'error');
+          resultsSection.classList.add('hidden');
+        } finally {
+          setLoading(false);
+        }
+      });
+    </script>
+  </body>
+</html>
